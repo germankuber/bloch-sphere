@@ -1,57 +1,50 @@
-# Esfera de Bloch
+# Bloch Sphere Simulator
 
-Simulador interactivo de un qubit. Toda la matemática cuántica está separada de la visualización: si entendés `src/quantum/`, entendés el qubit. La esfera es solo una vista de eso.
+An interactive, educational simulator of a single qubit on the Bloch sphere. Apply gates as animated rotations, measure, watch decoherence, and read the underlying math live.
 
-## Cómo correrlo
+The UI is in Spanish; code and identifiers are in English.
+
+![Bloch sphere simulator](docs/screenshot.png)
+
+## Run it
+
+Requires Node.js 20+, [pnpm](https://pnpm.io) and GNU Make (optional).
 
 ```bash
-pnpm install
-pnpm dev
+make dev
 ```
 
-Producción:
+Then open http://localhost:5173.
 
-```bash
-pnpm build
-pnpm preview
-```
+### Make targets
 
-## Qué enseña cada panel
+| Target | What it does |
+| --- | --- |
+| `make` / `make help` | List the available targets |
+| `make install` | Install dependencies with pnpm |
+| `make dev` | Start the Vite dev server |
+| `make build` | Typecheck and build for production into `dist/` |
+| `make preview` | Build and serve the production bundle locally |
+| `make typecheck` | Run `tsc --noEmit` on the app config |
+| `make lint` | Run oxlint |
+| `make clean` | Remove `dist` and build caches |
 
-### Estado
+Without Make, the equivalents are `pnpm install`, `pnpm dev`, `pnpm build` and `pnpm preview`.
 
-Los ángulos θ y φ fijan un punto en la superficie de la esfera. θ reparte la probabilidad entre |0⟩ y |1⟩; φ es la fase relativa, que no cambia nada en la base Z pero sí en X y en Y. Los seis botones son los estados cardinales.
+## What each panel teaches
 
-### Compuertas
+- **Estado**: set the state through the polar angle theta and the azimuth phi, or jump to the six cardinal states. Shows how any pure state maps to a point on the sphere.
+- **Compuertas**: every fixed gate plus parametric Rx, Ry, Rz and P. Each gate is animated as a rigid rotation around its axis, with a tooltip showing its matrix, axis and angle. A mini circuit records the history and supports undo.
+- **Lectura matematica**: live KaTeX readout of the ket in rectangular and polar form, the cos/sin form with numbers substituted, the Bloch vector, angles, density matrix and purity.
+- **Medicion**: probabilities in the X, Y and Z bases, single measurement with state collapse, and repeated shots comparing experimental and theoretical frequencies.
+- **Dinamica**: Larmor precession about a chosen axis, and relaxation (T1, T2, depolarizing) where the vector shrinks into the sphere as the state becomes mixed.
+- **Lecciones**: step-by-step lessons with auto-checked challenges, from what a qubit is up to mixed states and decoherence.
 
-Toda compuerta de un qubit es una rotación de la esfera. El eje y el ángulo de cada una no están escritos a mano: se derivan de la matriz con la descomposición n·σ en `src/quantum/rotation.ts`. Durante la animación se dibuja en rosa el eje real de rotación. El circuito de abajo acumula las compuertas aplicadas.
+## Architecture
 
-### Dinámica
+- `src/quantum/`: pure, immutable domain logic (complex numbers, matrices, gates, measurement, density matrices, channels). No UI dependencies.
+- `src/sphere/`: react-three-fiber scene. Physics coordinates are Z-up; three.js is Y-up, mapped in one place.
+- `src/store/`: zustand app state.
+- `src/panels/`, `src/lessons/`: UI panels and lesson content.
 
-Precesión de Larmor: un campo constante hace girar el vector alrededor de un eje sin acortarlo. Decoherencia: T1 relaja hacia |0⟩, T2 destruye la fase, y el vector se acorta hasta meterse dentro de la esfera. Un vector más corto es un estado mixto.
-
-### Lectura matemática
-
-El estado en forma rectangular y polar, la forma angular con los números sustituidos, el vector de Bloch, la matriz densidad ρ y la pureza Tr(ρ²). Pureza 1 es un estado puro sobre la superficie.
-
-### Medición
-
-Medir no lee el estado: lo colapsa. Las barras muestran las probabilidades en las bases Z, X e Y. El botón de 1000 tiros compara la frecuencia experimental con la teórica, que es la forma concreta de ver la naturaleza probabilística.
-
-### Lecciones
-
-Ocho lecciones con desafíos que se verifican solos por proximidad del vector de Bloch: qubit, superposición, fase relativa, medición, Pauli, Hadamard, S y T, y estados mixtos.
-
-## Estructura
-
-```
-src/quantum/   dominio puro, sin React ni three.js
-src/store/     estado de la aplicación (zustand)
-src/sphere/    escena 3D (react-three-fiber)
-src/panels/    paneles de control y lectura
-src/lessons/   contenido educativo
-```
-
-El mapeo de coordenadas físicas (Z arriba) a three.js (Y arriba) vive en un único lugar, `src/sphere/coordinates.ts`.
-
-La interfaz está en español; el código y los identificadores, en inglés.
+Built with Vite, React, TypeScript, three.js, @react-three/fiber, drei, KaTeX and zustand.
