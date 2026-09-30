@@ -18,15 +18,19 @@ export const dephasing = (r: Vec3, lambda: number): Vec3 => {
 
 export const depolarizing = (r: Vec3, probability: number): Vec3 => scaleVec(r, 1 - probability)
 
-const decayFraction = (rate: number, dt: number): number => (rate <= 0 ? 0 : 1 - Math.exp(-rate * dt))
-
 const inverseTime = (time: number): number => (Number.isFinite(time) && time > 0 ? 1 / time : 0)
 
 export const relaxationStep = (r: Vec3, parameters: RelaxationParameters, dt: number): Vec3 => {
-  const rateT1 = inverseTime(parameters.t1)
-  const rateT2 = inverseTime(parameters.t2)
-  const pureDephasingRate = Math.max(0, rateT2 - rateT1 / 2)
-  const damped = amplitudeDamping(r, decayFraction(rateT1, dt))
-  const dephased = dephasing(damped, decayFraction(2 * pureDephasingRate, dt))
-  return depolarizing(dephased, decayFraction(parameters.depolarizingRate, dt))
+  const energyRate = inverseTime(parameters.t1)
+  const depolarizingRate = Math.max(0, parameters.depolarizingRate)
+  const transverseRate = Math.max(inverseTime(parameters.t2), energyRate / 2) + depolarizingRate
+  const longitudinalRate = energyRate + depolarizingRate
+  const equilibriumZ = longitudinalRate > 0 ? energyRate / longitudinalRate : r.z
+  const transverseFactor = Math.exp(-transverseRate * dt)
+  const longitudinalFactor = Math.exp(-longitudinalRate * dt)
+  return vec3(
+    r.x * transverseFactor,
+    r.y * transverseFactor,
+    equilibriumZ + (r.z - equilibriumZ) * longitudinalFactor,
+  )
 }
