@@ -1,44 +1,36 @@
 import { useBlochStore } from '../store/useBlochStore'
-import { blochVectorOfSystem } from '../quantum/qubit'
+import { radiansToDegrees } from '../quantum/angles'
+import { useLiveState } from '../store/useLiveState'
+import { Panel } from './Panel'
 import { anglesOfVector } from '../quantum/state'
-import {
-  KET_MINUS,
-  KET_MINUS_I,
-  KET_ONE,
-  KET_PLUS,
-  KET_PLUS_I,
-  KET_ZERO,
-  type QubitState,
-} from '../quantum/state'
+import { PRESET_IDS, type PresetId } from '../protocol/vocabulary'
+import { resolvePreset } from '../bridge/registry'
 
-const PRESETS: readonly { readonly label: string; readonly ket: QubitState }[] = [
-  { label: '|0⟩', ket: KET_ZERO },
-  { label: '|1⟩', ket: KET_ONE },
-  { label: '|+⟩', ket: KET_PLUS },
-  { label: '|−⟩', ket: KET_MINUS },
-  { label: '|+i⟩', ket: KET_PLUS_I },
-  { label: '|−i⟩', ket: KET_MINUS_I },
-]
-
-const toDegrees = (radians: number): number => (radians * 180) / Math.PI
+const PRESET_LABELS: Readonly<Record<PresetId, string>> = {
+  '|0>': '|0⟩',
+  '|1>': '|1⟩',
+  '|+>': '|+⟩',
+  '|->': '|−⟩',
+  '|+i>': '|+i⟩',
+  '|-i>': '|−i⟩',
+}
 
 export const StatePanel = () => {
-  const system = useBlochStore((store) => store.system)
+  const { vector } = useLiveState()
   const setAngles = useBlochStore((store) => store.setAngles)
   const setState = useBlochStore((store) => store.setState)
 
-  const angles = anglesOfVector(blochVectorOfSystem(system))
+  const angles = anglesOfVector(vector)
 
   return (
-    <section className="panel">
-      <h2>Estado</h2>
+    <Panel title="Estado">
       <p className="panel-hint">
         Todo estado puro de un qubit es un punto en la superficie de la esfera, fijado por dos ángulos.
       </p>
 
       <label className="control">
         <span>
-          θ (polar) · {toDegrees(angles.theta).toFixed(1)}°
+          θ (polar) · {radiansToDegrees(angles.theta).toFixed(1)}°
         </span>
         <input
           type="range"
@@ -52,7 +44,7 @@ export const StatePanel = () => {
 
       <label className="control">
         <span>
-          φ (azimutal) · {toDegrees(angles.phi).toFixed(1)}°
+          φ (azimutal) · {radiansToDegrees(angles.phi).toFixed(1)}°
         </span>
         <input
           type="range"
@@ -65,12 +57,12 @@ export const StatePanel = () => {
       </label>
 
       <div className="preset-grid">
-        {PRESETS.map((preset) => (
-          <button key={preset.label} type="button" onClick={() => setState(preset.ket)}>
-            {preset.label}
+        {PRESET_IDS.map((preset) => (
+          <button key={preset} type="button" onClick={() => setState(resolvePreset(preset))}>
+            {PRESET_LABELS[preset]}
           </button>
         ))}
       </div>
-    </section>
+    </Panel>
   )
 }

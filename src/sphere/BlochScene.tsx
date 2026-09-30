@@ -1,18 +1,10 @@
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { Line, OrbitControls } from '@react-three/drei'
 import { useBlochStore } from '../store/useBlochStore'
 import { SphereFrame } from './SphereFrame'
 import { StateVector } from './StateVector'
 import { toSceneVector } from './coordinates'
 import { scaleVec } from '../quantum/vector'
-
-const MAX_STEP = 1 / 30
-
-const Ticker = () => {
-  const advance = useBlochStore((store) => store.advance)
-  useFrame((_, delta) => advance(Math.min(delta, MAX_STEP)))
-  return null
-}
 
 const RotationAxis = () => {
   const animation = useBlochStore((store) => store.animation)
@@ -50,7 +42,6 @@ const SceneContent = () => {
       <Trail />
       <RotationAxis />
       <StateVector vector={displayVector} showGuides={guides} />
-      <Ticker />
       <OrbitControls enablePan={false} minDistance={2} maxDistance={7} />
     </group>
   )

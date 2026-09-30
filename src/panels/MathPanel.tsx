@@ -1,11 +1,11 @@
-import { useBlochStore } from '../store/useBlochStore'
+import { useLiveState } from '../store/useLiveState'
+import { radiansToDegrees } from '../quantum/angles'
 import { Formula } from './Formula'
-import { blochVectorOfSystem, purityOfSystem } from '../quantum/qubit'
+import { Panel } from './Panel'
+import { purityOfSystem } from '../quantum/qubit'
 import { anglesOfVector } from '../quantum/state'
 import { densityMatrixFromBloch } from '../quantum/density'
 import { abs, arg, type Complex } from '../quantum/complex'
-
-const toDegrees = (radians: number): number => (radians * 180) / Math.PI
 
 const signed = (value: number): string => (value < 0 ? `- ${Math.abs(value).toFixed(3)}` : `+ ${value.toFixed(3)}`)
 
@@ -14,21 +14,18 @@ const rectangular = (z: Complex): string => `${z.re.toFixed(3)} ${signed(z.im)}i
 const polar = (z: Complex): string => {
   const modulus = abs(z)
   if (modulus < 1e-9) return '0'
-  return `${modulus.toFixed(3)}\\,e^{i\\,${toDegrees(arg(z)).toFixed(1)}^{\\circ}}`
+  return `${modulus.toFixed(3)}\\,e^{i\\,${radiansToDegrees(arg(z)).toFixed(1)}^{\\circ}}`
 }
 
 export const MathPanel = () => {
-  const system = useBlochStore((store) => store.system)
-  const vector = blochVectorOfSystem(system)
+  const { system, vector } = useLiveState()
   const angles = anglesOfVector(vector)
   const rho = densityMatrixFromBloch(vector)
   const purity = purityOfSystem(system)
   const { alpha, beta } = system.ket
 
   return (
-    <section className="panel">
-      <h2>Lectura matemática</h2>
-
+    <Panel title="Lectura matemática">
       <div className="readout">
         <Formula
           block
@@ -45,7 +42,7 @@ export const MathPanel = () => {
         />
         <Formula
           block
-          expression={`= ${Math.cos(angles.theta / 2).toFixed(3)}\\,|0\\rangle + e^{i\\,${toDegrees(angles.phi).toFixed(1)}^{\\circ}}\\,${Math.sin(angles.theta / 2).toFixed(3)}\\,|1\\rangle`}
+          expression={`= ${Math.cos(angles.theta / 2).toFixed(3)}\\,|0\\rangle + e^{i\\,${radiansToDegrees(angles.phi).toFixed(1)}^{\\circ}}\\,${Math.sin(angles.theta / 2).toFixed(3)}\\,|1\\rangle`}
         />
       </div>
 
@@ -56,8 +53,8 @@ export const MathPanel = () => {
           expression={`\\vec{r} = (${vector.x.toFixed(3)},\\; ${vector.y.toFixed(3)},\\; ${vector.z.toFixed(3)})`}
         />
         <div className="readout-row">
-          <span>θ = {toDegrees(angles.theta).toFixed(1)}° ({angles.theta.toFixed(3)} rad)</span>
-          <span>φ = {toDegrees(angles.phi).toFixed(1)}° ({angles.phi.toFixed(3)} rad)</span>
+          <span>θ = {radiansToDegrees(angles.theta).toFixed(1)}° ({angles.theta.toFixed(3)} rad)</span>
+          <span>φ = {radiansToDegrees(angles.phi).toFixed(1)}° ({angles.phi.toFixed(3)} rad)</span>
         </div>
       </div>
 
@@ -72,6 +69,6 @@ export const MathPanel = () => {
           Pureza 1 significa estado puro sobre la superficie. Por debajo de 1 el vector vive dentro de la esfera.
         </p>
       </div>
-    </section>
+    </Panel>
   )
 }

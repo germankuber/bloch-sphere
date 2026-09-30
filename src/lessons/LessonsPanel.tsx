@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { LESSONS } from './content'
 import { Formula } from '../panels/Formula'
 import { useBlochStore } from '../store/useBlochStore'
-import { blochVectorOfSystem } from '../quantum/qubit'
+import { useLiveState } from '../store/useLiveState'
+import { Panel } from '../panels/Panel'
 import { isVecCloseTo } from '../quantum/vector'
 
 const TOLERANCE = 0.06
 
 export const LessonsPanel = () => {
   const [index, setIndex] = useState(0)
-  const system = useBlochStore((store) => store.system)
+  const { vector } = useLiveState()
   const setState = useBlochStore((store) => store.setState)
 
   const lesson = LESSONS[index]
@@ -17,11 +18,10 @@ export const LessonsPanel = () => {
 
   const solved =
     lesson.target !== undefined &&
-    isVecCloseTo(blochVectorOfSystem(system), lesson.target, lesson.targetTolerance ?? TOLERANCE)
+    isVecCloseTo(vector, lesson.target, lesson.targetTolerance ?? TOLERANCE)
 
   return (
-    <section className="panel">
-      <h2>Lecciones</h2>
+    <Panel title="Lecciones">
 
       <div className="lesson-nav">
         {LESSONS.map((entry, position) => (
@@ -68,6 +68,6 @@ export const LessonsPanel = () => {
           <p className="challenge-status">{solved ? 'Resuelto' : 'Pendiente'}</p>
         </div>
       ) : null}
-    </section>
+    </Panel>
   )
 }

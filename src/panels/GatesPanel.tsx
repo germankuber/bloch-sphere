@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { radiansToDegrees } from '../quantum/angles'
 import { useBlochStore } from '../store/useBlochStore'
+import { Panel } from './Panel'
 import {
   FIXED_GATES,
   phaseGate,
@@ -19,10 +21,8 @@ const GATE_NOTES: Readonly<Record<string, string>> = {
   Sdg: 'Inversa de S: cuarto de vuelta en sentido contrario.',
   T: 'Octavo de vuelta alrededor de Z (45°).',
   Tdg: 'Inversa de T.',
-  SqrtX: 'Raíz de X: cuarto de vuelta alrededor de X.',
+  SX: 'Raíz de X: cuarto de vuelta alrededor de X.',
 }
-
-const toDegrees = (radians: number): number => (radians * 180) / Math.PI
 
 const formatAxis = (gate: Gate): string => {
   const { x, y, z } = gate.rotation.axis
@@ -44,8 +44,7 @@ export const GatesPanel = () => {
   const [angle, setAngle] = useState(Math.PI / 2)
 
   return (
-    <section className="panel">
-      <h2>Compuertas</h2>
+    <Panel title="Compuertas">
       <p className="panel-hint">
         Toda compuerta de un qubit es una rotación de la esfera. Pasá el cursor para ver su eje y su ángulo.
       </p>
@@ -56,7 +55,7 @@ export const GatesPanel = () => {
             key={gate.id}
             type="button"
             onClick={() => applyGate(gate)}
-            title={`${GATE_NOTES[gate.id] ?? ''}\nEje ${formatAxis(gate)} · ${toDegrees(gate.rotation.angle).toFixed(0)}°`}
+            title={`${GATE_NOTES[gate.id] ?? ''}\nEje ${formatAxis(gate)} · ${radiansToDegrees(gate.rotation.angle).toFixed(0)}°`}
           >
             {gate.label}
           </button>
@@ -64,7 +63,7 @@ export const GatesPanel = () => {
       </div>
 
       <label className="control">
-        <span>Ángulo paramétrico · {toDegrees(angle).toFixed(0)}°</span>
+        <span>Ángulo paramétrico · {radiansToDegrees(angle).toFixed(0)}°</span>
         <input
           type="range"
           min={0}
@@ -106,6 +105,6 @@ export const GatesPanel = () => {
           )}
         </div>
       </div>
-    </section>
+    </Panel>
   )
 }

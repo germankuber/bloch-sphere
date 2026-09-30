@@ -1,11 +1,10 @@
 import { useBlochStore } from '../store/useBlochStore'
-import { X_AXIS, Y_AXIS, Z_AXIS, type Vec3 } from '../quantum/vector'
+import { Panel } from './Panel'
+import type { Vec3 } from '../quantum/vector'
+import { BASIS_AXIS } from '../quantum/measurement'
+import { BASIS_NAMES } from '../protocol/vocabulary'
 
-const AXES: readonly { readonly label: string; readonly axis: Vec3 }[] = [
-  { label: 'X', axis: X_AXIS },
-  { label: 'Y', axis: Y_AXIS },
-  { label: 'Z', axis: Z_AXIS },
-]
+const AXES = BASIS_NAMES.map((label) => ({ label, axis: BASIS_AXIS[label] }))
 
 const sameAxis = (a: Vec3, b: Vec3): boolean => a.x === b.x && a.y === b.y && a.z === b.z
 
@@ -23,8 +22,7 @@ export const DynamicsPanel = () => {
   const setAnimationSpeed = useBlochStore((store) => store.setAnimationSpeed)
 
   return (
-    <section className="panel">
-      <h2>Dinámica</h2>
+    <Panel title="Dinámica" defaultOpen={false}>
 
       <span className="readout-title">Precesión de Larmor</span>
       <p className="panel-hint">
@@ -138,6 +136,6 @@ export const DynamicsPanel = () => {
           Limpiar traza
         </button>
       </div>
-    </section>
+    </Panel>
   )
 }

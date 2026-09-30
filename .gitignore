@@ -24,3 +24,8 @@ dist-ssr
 *.sw?
 
 .atl
+
+.env
+.env.*
+!.env.example
+coverage

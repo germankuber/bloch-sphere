@@ -1,29 +1,22 @@
 import { useBlochStore } from '../store/useBlochStore'
-import { blochVectorOfSystem } from '../quantum/qubit'
-import { BASES, outcomeProbabilities, sampleShots, outcomeLabel, type Basis } from '../quantum/measurement'
+import { useLiveState } from '../store/useLiveState'
+import { Panel } from './Panel'
+import { BASES, outcomeProbabilities, outcomeLabel } from '../quantum/measurement'
 
 const SHOT_OPTIONS = [100, 1000] as const
 
 const percent = (value: number): string => `${(value * 100).toFixed(1)}%`
 
 export const MeasurementPanel = () => {
-  const system = useBlochStore((store) => store.system)
+  const { vector } = useLiveState()
   const measure = useBlochStore((store) => store.measure)
   const shots = useBlochStore((store) => store.shots)
-  const setShots = useBlochStore((store) => store.setShots)
+  const runShots = useBlochStore((store) => store.runShots)
   const lastOutcome = useBlochStore((store) => store.lastOutcome)
 
-  const vector = blochVectorOfSystem(system)
-
-  const runShots = (basis: Basis, count: number) => {
-    const [probabilityOfZero] = outcomeProbabilities(vector, basis)
-    const [zero, one] = sampleShots(probabilityOfZero, count, Math.random)
-    setShots({ basis, zero, one })
-  }
 
   return (
-    <section className="panel">
-      <h2>Medición</h2>
+    <Panel title="Medición">
       <p className="panel-hint">
         Medir no lee el estado: lo colapsa. La esfera te da las probabilidades, no el resultado.
       </p>
@@ -34,7 +27,7 @@ export const MeasurementPanel = () => {
           <div key={basis} className="basis-block">
             <div className="basis-head">
               <span>Base {basis}</span>
-              <button type="button" onClick={() => measure(basis)}>
+              <button type="button" onClick={() => void measure(basis)}>
                 Medir
               </button>
             </div>
@@ -95,6 +88,6 @@ export const MeasurementPanel = () => {
           </p>
         </div>
       ) : null}
-    </section>
+    </Panel>
   )
 }

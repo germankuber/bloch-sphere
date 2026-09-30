@@ -30,7 +30,7 @@ body {
 
 .layout {
   display: grid;
-  grid-template-columns: 320px minmax(0, 1fr) 360px;
+  grid-template-columns: 300px minmax(0, 1fr) 440px;
   grid-template-rows: 56px minmax(0, 1fr);
   grid-template-areas:
     'topbar topbar topbar'
@@ -62,6 +62,7 @@ body {
 
 .sidebar {
   overflow-y: auto;
+  min-width: 0;
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -89,18 +90,54 @@ body {
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
   border-radius: 10px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 12px 14px;
+  min-width: 0;
+  flex: none;
 }
 
-.panel h2 {
-  margin: 0;
+.panel-summary {
+  cursor: pointer;
+  list-style: none;
   font-size: 13px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.09em;
   color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.panel-summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-summary::before {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid currentColor;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: transform 0.18s ease;
+  flex: none;
+}
+
+.panel[open] > .panel-summary::before {
+  transform: rotate(90deg);
+}
+
+.panel-summary:hover {
+  color: #7fc4ea;
+}
+
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 10px;
 }
 
 .panel-hint {
@@ -234,8 +271,19 @@ button.active {
 
 .formula-block {
   display: block;
+  max-width: 100%;
   overflow-x: auto;
-  padding: 2px 0;
+  overflow-y: hidden;
+  padding: 3px 0 7px;
+}
+
+.formula-block::-webkit-scrollbar {
+  height: 6px;
+}
+
+.formula-block::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 3px;
 }
 
 .basis-block {
@@ -353,8 +401,144 @@ button.active {
   color: #8ee6a0;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1440px) {
   .layout {
-    grid-template-columns: 280px minmax(0, 1fr) 310px;
+    grid-template-columns: 270px minmax(0, 1fr) 380px;
   }
+}
+
+@media (max-width: 1180px) {
+  .layout {
+    grid-template-columns: 240px minmax(0, 1fr) 330px;
+  }
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.bridge-status {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: rgba(11, 26, 39, 0.85);
+  font-size: 11px;
+  color: var(--muted);
+  pointer-events: auto;
+}
+
+.bridge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6b7f91;
+}
+
+.bridge-status.online {
+  color: #8ee6a0;
+  border-color: #2c5a3e;
+}
+
+.bridge-status.online .bridge-dot {
+  background: #8ee6a0;
+  box-shadow: 0 0 7px #8ee6a0;
+}
+
+.explanation {
+  align-self: center;
+  max-width: 620px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 11px;
+  border: 1px solid var(--accent);
+  background: rgba(11, 26, 39, 0.95);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  position: relative;
+}
+
+.explanation h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: var(--gold);
+}
+
+.explanation p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.explanation-close {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  padding: 3px 9px;
+  font-size: 10px;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #06121c;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.primary:hover:not(:disabled) {
+  background: #7fc4ea;
+}
+
+.sequence-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sequence-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.sequence-steps {
+  margin: 0;
+  padding: 0 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sequence-step {
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sequence-step.done {
+  color: #8ee6a0;
+}
+
+.sequence-step.current {
+  color: var(--gold);
+  font-weight: 600;
+}
+
+.sequence-note {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
 }

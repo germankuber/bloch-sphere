@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Line, Text } from '@react-three/drei'
+import { useBlochStore } from '../store/useBlochStore'
 import { SPHERE_RADIUS, toScenePoint, type SceneTriple } from './coordinates'
 import { scaleVec, sphericalToVec, X_AXIS, Y_AXIS, Z_AXIS } from '../quantum/vector'
 
@@ -44,6 +45,8 @@ interface SphereFrameProps {
 }
 
 export const SphereFrame = ({ showLabels }: SphereFrameProps) => {
+  const highlightedAxis = useBlochStore((store) => store.highlightedAxis)
+
   const parallels = useMemo(
     () =>
       Array.from({ length: PARALLEL_COUNT }, (_, index) =>
@@ -85,19 +88,22 @@ export const SphereFrame = ({ showLabels }: SphereFrameProps) => {
 
       <Line points={equator} color={EQUATOR_COLOR} lineWidth={2} />
 
-      {CARTESIAN_AXES.map((entry) => (
-        <Line
-          key={`axis-${entry.name}`}
-          points={[
-            toScenePoint(scaleVec(entry.direction, -AXIS_EXTENT)),
-            toScenePoint(scaleVec(entry.direction, AXIS_EXTENT)),
-          ]}
-          color={entry.color}
-          lineWidth={1.6}
-          transparent
-          opacity={0.75}
-        />
-      ))}
+      {CARTESIAN_AXES.map((entry) => {
+        const highlighted = highlightedAxis === entry.name
+        return (
+          <Line
+            key={`axis-${entry.name}`}
+            points={[
+              toScenePoint(scaleVec(entry.direction, -AXIS_EXTENT)),
+              toScenePoint(scaleVec(entry.direction, AXIS_EXTENT)),
+            ]}
+            color={highlighted ? '#ffffff' : entry.color}
+            lineWidth={highlighted ? 4 : 1.6}
+            transparent
+            opacity={highlighted ? 1 : 0.75}
+          />
+        )
+      })}
 
       {AXIS_LABELS.map((label) => {
         const direction = { x: label.position[0], y: label.position[1], z: label.position[2] }

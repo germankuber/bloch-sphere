@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { recordStep, startAnimation, stepSimulation, type AnimationState } from './simulationStep'
 import type { Gate } from '../quantum/gates'
 import {
   INITIAL_SYSTEM,
@@ -13,11 +14,13 @@ import {
   collapsedVector,
   outcomeProbabilities,
   sampleOutcome,
+  sampleShots,
+  type RandomSource,
   type Basis,
   type Outcome,
 } from '../quantum/measurement'
-import { relaxationStep, type RelaxationParameters } from '../quantum/channels'
-import { rotateAroundAxis, vec3, Z_AXIS, type Vec3 } from '../quantum/vector'
+import type { RelaxationParameters } from '../quantum/channels'
+import { Z_AXIS, type Vec3 } from '../quantum/vector'
 
 export interface HistoryEntry {
   readonly id: string
@@ -36,18 +39,18 @@ export interface PrecessionSettings {
   readonly omega: number
 }
 
+export type Axis = Basis
+
+export interface Explanation {
+  readonly title?: string
+  readonly text: string
+  readonly formula?: string
+}
+
 export interface VisualToggles {
   readonly guides: boolean
   readonly trail: boolean
   readonly labels: boolean
-}
-
-interface AnimationState {
-  readonly gate: Gate
-  readonly startVector: Vec3
-  readonly startSystem: QubitSystem
-  readonly elapsed: number
-  readonly duration: number
 }
 
 export interface BlochStore {
@@ -65,13 +68,18 @@ export interface BlochStore {
   relaxation: RelaxationParameters
   relaxationRunning: boolean
   precession: PrecessionSettings
+  explanation: Explanation | null
+  highlightedAxis: Axis | null
+  bridgeConnected: boolean
+  clientId: string | null
   applyGate: (gate: Gate) => void
   setAngles: (theta: number, phi: number) => void
   setState: (ket: QubitState) => void
   setBlochVector: (vector: Vec3) => void
   reset: () => void
   undo: () => void
-  measure: (basis: Basis) => void
+  measure: (basis: Basis, random?: RandomSource) => Outcome
+  runShots: (basis: Basis, count: number, random?: RandomSource) => ShotStats
   setShots: (stats: ShotStats | null) => void
   clearTrail: () => void
   toggle: (key: keyof VisualToggles) => void
@@ -79,14 +87,13 @@ export interface BlochStore {
   setRelaxation: (parameters: Partial<RelaxationParameters>) => void
   setRelaxationRunning: (running: boolean) => void
   setPrecession: (settings: Partial<PrecessionSettings>) => void
+  setExplanation: (explanation: Explanation | null) => void
+  setHighlightedAxis: (axis: Axis | null) => void
+  setBridgeConnected: (connected: boolean) => void
+  setClientId: (clientId: string | null) => void
+  completeAnimations: () => void
   advance: (delta: number) => void
 }
-
-const BASE_DURATION = 0.8
-const MAX_TRAIL = 400
-
-const pushTrail = (trail: readonly Vec3[], point: Vec3): readonly Vec3[] =>
-  trail.length >= MAX_TRAIL ? [...trail.slice(1), point] : [...trail, point]
 
 export const useBlochStore = create<BlochStore>((set, get) => ({
   system: INITIAL_SYSTEM,
@@ -103,6 +110,10 @@ export const useBlochStore = create<BlochStore>((set, get) => ({
   relaxation: { t1: 6, t2: 3, depolarizingRate: 0 },
   relaxationRunning: false,
   precession: { running: false, axis: Z_AXIS, omega: 1.2 },
+  explanation: null,
+  highlightedAxis: null,
+  bridgeConnected: false,
+  clientId: null,
 
   applyGate: (gate) => {
     const { animation, queue } = get()
@@ -111,15 +122,7 @@ export const useBlochStore = create<BlochStore>((set, get) => ({
       return
     }
     const { system, animationSpeed } = get()
-    set({
-      animation: {
-        gate,
-        startVector: blochVectorOfSystem(system),
-        startSystem: system,
-        elapsed: 0,
-        duration: BASE_DURATION / animationSpeed,
-      },
-    })
+    set({ animation: startAnimation(gate, system, animationSpeed) })
   },
 
   setAngles: (theta, phi) => {
@@ -161,9 +164,13 @@ export const useBlochStore = create<BlochStore>((set, get) => ({
       lastOutcome: null,
       shots: null,
       relaxationRunning: false,
+      precession: { ...get().precession, running: false },
+      explanation: null,
+      highlightedAxis: null,
     }),
 
   undo: () => {
+    get().completeAnimations()
     const { past, history } = get()
     const system = past[past.length - 1]
     if (!system) return
@@ -178,21 +185,31 @@ export const useBlochStore = create<BlochStore>((set, get) => ({
     })
   },
 
-  measure: (basis) => {
+  measure: (basis, random = Math.random) => {
+    get().completeAnimations()
     const { system, past, history } = get()
     const [probabilityOfZero] = outcomeProbabilities(blochVectorOfSystem(system), basis)
-    const outcome = sampleOutcome(probabilityOfZero, Math.random)
+    const outcome = sampleOutcome(probabilityOfZero, random)
     const target = collapsedVector(basis, outcome)
     const collapsed = systemFromBlochVector(target, system.ket)
     set({
       system: collapsed,
       displayVector: blochVectorOfSystem(collapsed),
-      past: [...past, system],
-      history: [...history, { id: `M${basis}`, label: `M${basis}` }],
+      ...recordStep({ past, history }, system, { id: `M${basis}`, label: `M${basis}` }),
       lastOutcome: outcome,
       animation: null,
       queue: [],
     })
+    return outcome
+  },
+
+  runShots: (basis, count, random = Math.random) => {
+    get().completeAnimations()
+    const [probabilityOfZero] = outcomeProbabilities(blochVectorOfSystem(get().system), basis)
+    const [zero, one] = sampleShots(probabilityOfZero, count, random)
+    const shots: ShotStats = { basis, zero, one }
+    set({ shots })
+    return shots
   },
 
   setShots: (stats) => set({ shots: stats }),
@@ -211,74 +228,36 @@ export const useBlochStore = create<BlochStore>((set, get) => ({
   setPrecession: (settings) =>
     set((store) => ({ precession: { ...store.precession, ...settings } })),
 
-  advance: (delta) => {
-    const store = get()
-    const { animation } = store
+  setExplanation: (explanation) => set({ explanation }),
 
-    if (animation) {
-      const elapsed = animation.elapsed + delta
-      const progress = Math.min(1, elapsed / animation.duration)
-      const angle = animation.gate.rotation.angle * progress
-      const rotated = rotateAroundAxis(animation.startVector, animation.gate.rotation.axis, angle)
+  setHighlightedAxis: (highlightedAxis) => set({ highlightedAxis }),
 
-      if (progress < 1) {
-        set({
-          animation: { ...animation, elapsed },
-          displayVector: rotated,
-          trail: store.toggles.trail ? pushTrail(store.trail, rotated) : store.trail,
-        })
-        return
-      }
+  setBridgeConnected: (bridgeConnected) => set({ bridgeConnected }),
 
-      const settled = applyGateToSystem(animation.startSystem, animation.gate)
-      const [next, ...rest] = store.queue
-      set({
-        system: settled,
-        displayVector: blochVectorOfSystem(settled),
-        past: [...store.past, animation.startSystem],
-        history: [...store.history, { id: animation.gate.id, label: animation.gate.label }],
-        animation: next
-          ? {
-              gate: next,
-              startVector: blochVectorOfSystem(settled),
-              startSystem: settled,
-              elapsed: 0,
-              duration: BASE_DURATION / store.animationSpeed,
-            }
-          : null,
-        queue: next ? rest : [],
-      })
-      return
-    }
+  setClientId: (clientId) => set({ clientId }),
 
-    if (store.precession.running) {
-      const current = blochVectorOfSystem(store.system)
-      const rotated = rotateAroundAxis(current, store.precession.axis, store.precession.omega * delta)
-      const system = systemFromBlochVector(rotated, store.system.ket)
-      set({
-        system,
-        displayVector: rotated,
-        trail: store.toggles.trail ? pushTrail(store.trail, rotated) : store.trail,
-      })
-      return
-    }
-
-    if (store.relaxationRunning) {
-      const current = blochVectorOfSystem(store.system)
-      const relaxed = relaxationStep(current, store.relaxation, delta)
-      const system = systemFromBlochVector(relaxed, store.system.ket)
-      set({ system, displayVector: relaxed })
-      return
-    }
-
-    const target = blochVectorOfSystem(store.system)
-    const drift = vec3(
-      target.x - store.displayVector.x,
-      target.y - store.displayVector.y,
-      target.z - store.displayVector.z,
+  completeAnimations: () => {
+    const { animation, queue, past, history } = get()
+    if (!animation) return
+    const finished = [animation.gate, ...queue].reduce(
+      (accumulated, gate) => ({
+        system: applyGateToSystem(accumulated.system, gate),
+        ...recordStep(accumulated, accumulated.system, { id: gate.id, label: gate.label }),
+      }),
+      { system: animation.startSystem, past, history },
     )
-    if (Math.abs(drift.x) + Math.abs(drift.y) + Math.abs(drift.z) > 1e-6) {
-      set({ displayVector: target })
-    }
+    set({
+      system: finished.system,
+      displayVector: blochVectorOfSystem(finished.system),
+      past: finished.past,
+      history: finished.history,
+      animation: null,
+      queue: [],
+    })
+  },
+
+  advance: (delta) => {
+    const update = stepSimulation(get(), delta)
+    if (update) set(update)
   },
 }))
