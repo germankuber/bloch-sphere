@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Line, Text } from '@react-three/drei'
 import { SPHERE_RADIUS, toScenePoint, type SceneTriple } from './coordinates'
-import { sphericalToVec } from '../quantum/vector'
+import { scaleVec, sphericalToVec, X_AXIS, Y_AXIS, Z_AXIS } from '../quantum/vector'
 
 const MERIDIAN_COUNT = 12
 const PARALLEL_COUNT = 5
@@ -23,13 +23,21 @@ const meridianPoints = (phi: number): SceneTriple[] =>
   })
 
 const AXIS_LABELS = [
-  { text: '|0⟩', position: [0, 0, 1], color: '#8ee6a0' },
-  { text: '|1⟩', position: [0, 0, -1], color: '#f2a0a0' },
-  { text: '|+⟩', position: [1, 0, 0], color: '#f5d17a' },
-  { text: '|−⟩', position: [-1, 0, 0], color: '#f5d17a' },
-  { text: '|+i⟩', position: [0, 1, 0], color: '#c2a6f0' },
-  { text: '|−i⟩', position: [0, -1, 0], color: '#c2a6f0' },
+  { text: '|0⟩', axis: '+Z', position: [0, 0, 1], color: '#8ee6a0' },
+  { text: '|1⟩', axis: '−Z', position: [0, 0, -1], color: '#8ee6a0' },
+  { text: '|+⟩', axis: '+X', position: [1, 0, 0], color: '#f5d17a' },
+  { text: '|−⟩', axis: '−X', position: [-1, 0, 0], color: '#f5d17a' },
+  { text: '|+i⟩', axis: '+Y', position: [0, 1, 0], color: '#c2a6f0' },
+  { text: '|−i⟩', axis: '−Y', position: [0, -1, 0], color: '#c2a6f0' },
 ] as const
+
+const CARTESIAN_AXES = [
+  { name: 'X', direction: X_AXIS, color: '#f5d17a' },
+  { name: 'Y', direction: Y_AXIS, color: '#c2a6f0' },
+  { name: 'Z', direction: Z_AXIS, color: '#8ee6a0' },
+] as const
+
+const AXIS_EXTENT = 1.32
 
 interface SphereFrameProps {
   readonly showLabels: boolean
@@ -77,19 +85,48 @@ export const SphereFrame = ({ showLabels }: SphereFrameProps) => {
 
       <Line points={equator} color={EQUATOR_COLOR} lineWidth={2} />
 
+      {CARTESIAN_AXES.map((entry) => (
+        <Line
+          key={`axis-${entry.name}`}
+          points={[
+            toScenePoint(scaleVec(entry.direction, -AXIS_EXTENT)),
+            toScenePoint(scaleVec(entry.direction, AXIS_EXTENT)),
+          ]}
+          color={entry.color}
+          lineWidth={1.6}
+          transparent
+          opacity={0.75}
+        />
+      ))}
+
       {AXIS_LABELS.map((label) => {
-        const tip = toScenePoint({ x: label.position[0], y: label.position[1], z: label.position[2] })
-        const textAnchor = toScenePoint(
-          { x: label.position[0], y: label.position[1], z: label.position[2] },
-          1.22,
-        )
+        const direction = { x: label.position[0], y: label.position[1], z: label.position[2] }
+        const stateAnchor = toScenePoint(direction, 1.2)
+        const axisAnchor = toScenePoint(direction, 1.42)
         return (
           <group key={label.text}>
-            <Line points={[[0, 0, 0], tip]} color={label.color} lineWidth={1.4} transparent opacity={0.5} />
             {showLabels ? (
-              <Text position={textAnchor} fontSize={0.13} color={label.color} anchorX="center" anchorY="middle">
-                {label.text}
-              </Text>
+              <group>
+                <Text
+                  position={stateAnchor}
+                  fontSize={0.13}
+                  color={label.color}
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  {label.text}
+                </Text>
+                <Text
+                  position={axisAnchor}
+                  fontSize={0.1}
+                  color={label.color}
+                  fillOpacity={0.72}
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  {label.axis}
+                </Text>
+              </group>
             ) : null}
           </group>
         )
